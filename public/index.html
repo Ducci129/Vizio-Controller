@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV Control</title>
+    <style>
+        #logList {
+            max-height: 200px; /* Adjust the maximum height of the log list */
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>TV Control</h1>
+    
+    <div id="log">
+        <h2>Log:</h2>
+        <ul id="logList"></ul>
+    </div>
+
+    <script>
+        let isVPressed = false;
+        let lastInteractionTime = 0;
+        const interactionThrottleDelay = 1000; // Set the throttle delay in milliseconds
+
+        // Function to send keypress events to the server
+        function sendKeyPress(key) {
+            // Check if the throttle delay has passed since the last interaction
+            const currentTime = new Date().getTime();
+            if (currentTime - lastInteractionTime < interactionThrottleDelay) {
+                console.log(`Interactions throttled for key: ${key}`);
+                return;
+            }
+
+            // Update the last interaction time
+            lastInteractionTime = currentTime;
+
+            // Send a request to the server with the pressed key and V key status
+            fetch('/keypress', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ key, isVPressed }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    // Update the log on the page
+                    updateLog(data.logEntry);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Update the log on the page
+        function updateLog(logEntry) {
+            const logList = document.getElementById('logList');
+            const listItem = document.createElement('li');
+            listItem.textContent = logEntry;
+            logList.appendChild(listItem);
+
+            // Scroll to the bottom to show the most recent log entry
+            logList.scrollTop = logList.scrollHeight;
+        }
+
+        // Detect keypress events and send them to the server
+        document.addEventListener('keydown', function (event) {
+            let key;
+
+            // Categorize keys into different groups
+            if (event.key.length === 1) {
+                // Single characters (letters and numbers)
+                key = event.key.toLowerCase();
+            } else {
+                // Special keys
+                switch(event.key) {
+                    case 'ArrowUp':
+                        key = 'up';
+                        break;
+                    case 'ArrowDown':
+                        key = 'down';
+                        break;
+                    case 'ArrowLeft':
+                        key = 'left';
+                        break;
+                    case 'ArrowRight':
+                        key = 'right';
+                        break;
+                    // Add more special keys as needed
+                    case 'v':
+                        if (!isVPressed) {
+                            isVPressed = true;
+                            // Send a message to the server indicating 'V' is being held
+                            sendKeyPress('v_pressed');
+                        }
+                        break;
+                }
+            }
+
+            if (key) {
+                sendKeyPress(key);
+            }
+        });
+
+        // Detect key release events
+        document.addEventListener('keyup', function (event) {
+            if (event.key === 'v') {
+                isVPressed = false;
+                // Send a message to the server indicating 'V' is released
+                sendKeyPress('v_released');
+            }
+        });
+    </script>
+</body>
+</html>
