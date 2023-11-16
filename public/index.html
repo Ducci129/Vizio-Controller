@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV Control</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        header {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 1em;
+        }
+
+        #log {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        #log h2 {
+            color: #333;
+        }
+
+        #logList {
+            max-height: 200px;
+            overflow-y: auto;
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #logList li {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            font-size: 14px;
+            line-height: 0.4;
+        }
+
+        .key-info {
+            color: #4CAF50; /* Green color for key information */
+            font-weight: bold;
+        }
+
+        .action {
+            color: #1E90FF !important; /* Dodger Blue color for actions */
+        }
+
+        .v-holding {
+            background-color: #FFFF00 !important; /* Yellow background for entries made while 'V' is held */
+        }
+
+        .interaction-info {
+            color: #FFA500; /* Orange color for interaction information */
+        }
+
+        .v-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            background-color: #FFFF00; /* Yellow background for volume control indicator */
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>TV Control</h1>
+    </header>
+    
+    <div id="log">
+        <h2>Log:</h2>
+        <div class="v-indicator" id="vIndicator">Volume Controls Enabled</div>
+        <ul id="logList"></ul>
+    </div>
+
+    <script>
+        let isVPressed = false;
+
+        const keyMap = {
+            'a': 'a',
+            'b': 'b',
+            'c': 'c',
+            'd': 'd',
+            'e': 'e',
+            'f': 'f',
+            'g': 'g',
+            'h': 'h',
+            'i': 'i',
+            'j': 'j',
+            'k': 'k',
+            'l': 'l',
+            'm': 'm',
+            'n': 'n',
+            'o': 'o',
+            'p': 'p',
+            'q': 'q',
+            'r': 'r',
+            's': 's',
+            't': 't',
+            'u': 'u',
+            'w': 'w',
+            'x': 'x',
+            'y': 'y',
+            'z': 'z',
+            'ArrowUp': 'up',
+            'ArrowDown': 'down',
+            'ArrowLeft': 'left',
+            'ArrowRight': 'right',
+            'Escape': 'escape',
+            'Enter': 'enter',
+            'Backspace': 'backspace',
+            'Tab': 'tab',
+            'Shift': 'shift',
+            'Control': 'control',
+            'Alt': 'alt',
+            'CapsLock': 'capslock',
+            'Space': 'space',
+            'PageUp': 'pageup',
+            'PageDown': 'pagedown',
+            'End': 'end',
+            'Home': 'home',
+            'Insert': 'insert',
+            'Delete': 'delete',
+        };
+
+        function sendKeyPress(key, isVPressed) {
+            fetch('/keypress', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ key, isVPressed }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    updateLog(data.logEntry, key);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function updateLog(logEntry, key) {
+            const logList = document.getElementById('logList');
+            const listItem = document.createElement('li');
+
+          if (isVPressed) {
+              // Display a message in the top right corner when 'V' is pressed
+              vIndicator.style.display = 'block';
+          } else {
+              // Hide the message when 'V' is released
+              vIndicator.style.display = 'none';
+          }
+
+
+            const parts = logEntry.split(', '); // Split the log entry into parts
+            parts.forEach(part => {
+                const span = document.createElement('span');
+                span.textContent = part;
+                if (key === 'v_pressed') {
+                    // Add a class for entries made while 'V' is held
+                    listItem.classList.add('v-holding');
+                } else if (key === 'v_released') {
+                    // Remove the class when 'V' is released
+                    listItem.classList.remove('v-holding');
+                } else {
+                    // Apply color coding based on the part content
+                    if (part.includes('Key:')) {
+                        span.classList.add('key-info');
+                    } else if (part.includes('Interaction:')) {
+                        span.classList.add('interaction-info');
+                    } else {
+                        span.classList.add('action');
+                    }
+                }
+
+                listItem.appendChild(span);
+
+                // Add a separator between parts
+                const separator = document.createElement('span');
+                separator.textContent = ', ';
+                listItem.appendChild(separator);
+            });
+
+            // Remove the trailing separator
+            listItem.removeChild(listItem.lastChild);
+
+            logList.appendChild(listItem);
+
+            // Scroll to the bottom of the log list
+            logList.scrollTop = logList.scrollHeight;
+        }
+
+        document.addEventListener('keydown', function (event) {
+            const key = keyMap[event.key.toLowerCase()] || event.key.toLowerCase();
+
+            if (key === 'v' && !isVPressed) {
+                isVPressed = true;
+                sendKeyPress('v_pressed', isVPressed);
+            } else if (key !== 'v') {
+                sendKeyPress(key, isVPressed);
+            }
+        });
+
+        document.addEventListener('keyup', function (event) {
+            if (event.key === 'v' && isVPressed) {
+                isVPressed = false;
+                sendKeyPress('v_released', isVPressed);
+            }
+        });
+    </script>
+</body>
+</html>
