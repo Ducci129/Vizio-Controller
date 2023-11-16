@@ -1,7 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const smartcast = require('vizio-smart-cast');
-const keypress = require('keypress');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -17,28 +16,29 @@ const tv2AUTH = process.env['tv2AUTH'];
 const tv1 = new smartcast(tv1IP, tv1AUTH);
 const tv2 = new smartcast(tv2IP, tv2AUTH);
 let tv = 1;
+let isVPressed = false;
 
-// Initialize the keypress library
-keypress(process.stdin);
-
-// Ensure the terminal is in raw mode
-process.stdin.setRawMode(true);
-
-// Set up event listener for keypress on stdin
-process.stdin.on('keypress', function (ch, key) {
-  // Handle keypress events on the server
-  if (key) {
-    const logEntry = handleKeyPress(key.name, false);
-    console.log(logEntry);
-  }
-});
-
-// Handle keypress events on the server
 app.post('/keypress', (req, res) => {
     const pressedKey = req.body.key;
-    const isVPressed = req.body.isVPressed;
-    const logEntry = handleKeyPress(pressedKey, isVPressed);
-    res.json({ success: true, logEntry });
+    const clientIsVPressed = req.body.isVPressed;
+
+    if (pressedKey === 'v_pressed' && !isVPressed) {
+        // Send a log entry only if 'v_pressed' event is received and isVPressed is false
+        isVPressed = true;
+        const logEntry = `Key: ${pressedKey}, Interaction: V key is being held down`;
+        res.json({ success: true, logEntry });
+    } else if (pressedKey === 'v_released') {
+        // Handle 'v_released' event
+        isVPressed = false;
+        const logEntry = `Key: ${pressedKey}, Interaction: V key is released`;
+        res.json({ success: true, logEntry });
+    } else {
+        // Handle other key events using the keymap or custom logic
+        const logEntry = handleKeyPress(pressedKey, clientIsVPressed);
+        res.json({ success: true, logEntry });
+    }
+
+    // ... (rest of the server-side code)
 });
 
 function handleKeyPress(pressedKey, isVPressed) {
@@ -46,14 +46,25 @@ function handleKeyPress(pressedKey, isVPressed) {
     let logEntry = `Key: ${pressedKey}, Interaction: `;
 
     if (isVPressed) {
-        // Handle volume adjustment based on 'V' key being held
-        if (pressedKey === 'up') {
-            selectedTV.control.volume.up();
-            logEntry += `Increased volume for TV ${tv}`;
-        } else if (pressedKey === 'down') {
-            selectedTV.control.volume.down();
-            logEntry += `Decreased volume for TV ${tv}`;
-        }
+      // Handle volume adjustment based on 'V' key being held
+      switch(pressedKey) {
+        case 'up':
+          selectedTV.control.volume.up();
+          logEntry += `Volume Increased for TV ${tv};`
+          break;
+        case 'down':
+          selectedTV.control.volume.down();
+          logEntry += `Volume Decreased for TV ${tv};`
+          break;
+        case 'arrowup':
+          selectedTV.control.volume.up();
+          logEntry += `Volume Increased for TV ${tv};`
+          break;
+        case 'arrowdown':
+          selectedTV.control.volume.down();
+          logEntry += `Volume Decreased for TV ${tv};`
+          break;
+      } 
     } else {
         // Handle navigation commands when 'V' key is not held
         switch (pressedKey) {
@@ -72,22 +83,22 @@ function handleKeyPress(pressedKey, isVPressed) {
                 selectedTV.control.volume.toggleMute();
                 logEntry += `Toggled mute for TV ${tv}`;
                 break;
-            case 'up':
+            case 'up', 'arrowup':
                 // Handle other navigation commands, e.g., ArrowUp
                 selectedTV.control.navigate.up();
                 logEntry += `Navigated Up for TV ${tv}`;
                 break;
-            case 'down':
+            case 'down', 'arrowdown':
                 // Handle other navigation commands, e.g., ArrowDown
                 selectedTV.control.navigate.down();
                 logEntry += `Navigated Down for TV ${tv}`;
                 break;
-            case 'left':
+            case 'left', 'arrowleft':
                 // Handle other navigation commands, e.g., ArrowLeft
                 selectedTV.control.navigate.left();
                 logEntry += `Navigated Left for TV ${tv}`;
                 break;
-            case 'right':
+            case 'right', 'arrowright':
                 // Handle other navigation commands, e.g., ArrowRight
                 selectedTV.control.navigate.right();
                 logEntry += `Navigated Right for TV ${tv}`;

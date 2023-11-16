@@ -4,12 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TV Control</title>
-    <style>
-        #logList {
-            max-height: 200px; /* Adjust the maximum height of the log list */
-            overflow-y: auto;
-        }
-    </style>
 </head>
 <body>
     <h1>TV Control</h1>
@@ -21,22 +15,55 @@
 
     <script>
         let isVPressed = false;
-        let lastInteractionTime = 0;
-        const interactionThrottleDelay = 1000; // Set the throttle delay in milliseconds
 
-        // Function to send keypress events to the server
-        function sendKeyPress(key) {
-            // Check if the throttle delay has passed since the last interaction
-            const currentTime = new Date().getTime();
-            if (currentTime - lastInteractionTime < interactionThrottleDelay) {
-                console.log(`Interactions throttled for key: ${key}`);
-                return;
-            }
+        const keyMap = {
+            'a': 'a',
+            'b': 'b',
+            'c': 'c',
+            'd': 'd',
+            'e': 'e',
+            'f': 'f',
+            'g': 'g',
+            'h': 'h',
+            'i': 'i',
+            'j': 'j',
+            'k': 'k',
+            'l': 'l',
+            'm': 'm',
+            'n': 'n',
+            'o': 'o',
+            'p': 'p',
+            'q': 'q',
+            'r': 'r',
+            's': 's',
+            't': 't',
+            'u': 'u',
+            'w': 'w',
+            'x': 'x',
+            'y': 'y',
+            'z': 'z',
+            'ArrowUp': 'up',
+            'ArrowDown': 'down',
+            'ArrowLeft': 'left',
+            'ArrowRight': 'right',
+            'Escape': 'escape',
+            'Enter': 'enter',
+            'Backspace': 'backspace',
+            'Tab': 'tab',
+            'Shift': 'shift',
+            'Control': 'control',
+            'Alt': 'alt',
+            'CapsLock': 'capslock',
+            'Space': 'space',
+            'PageUp': 'pageup',
+            'PageDown': 'pagedown',
+            'End': 'end',
+            'Home': 'home',
+            'Insert': 'insert',
+            'Delete': 'delete',
+        };
 
-            // Update the last interaction time
-            lastInteractionTime = currentTime;
-
-            // Send a request to the server with the pressed key and V key status
+        function sendKeyPress(key, isVPressed) {
             fetch('/keypress', {
                 method: 'POST',
                 headers: {
@@ -47,68 +74,35 @@
                 .then(response => response.json())
                 .then(data => {
                     console.log(data);
-                    // Update the log on the page
                     updateLog(data.logEntry);
                 })
                 .catch(error => console.error('Error:', error));
         }
 
-        // Update the log on the page
         function updateLog(logEntry) {
             const logList = document.getElementById('logList');
             const listItem = document.createElement('li');
             listItem.textContent = logEntry;
             logList.appendChild(listItem);
 
-            // Scroll to the bottom to show the most recent log entry
             logList.scrollTop = logList.scrollHeight;
         }
 
-        // Detect keypress events and send them to the server
         document.addEventListener('keydown', function (event) {
-            let key;
+            const key = keyMap[event.key.toLowerCase()] || event.key.toLowerCase();
 
-            // Categorize keys into different groups
-            if (event.key.length === 1) {
-                // Single characters (letters and numbers)
-                key = event.key.toLowerCase();
-            } else {
-                // Special keys
-                switch(event.key) {
-                    case 'ArrowUp':
-                        key = 'up';
-                        break;
-                    case 'ArrowDown':
-                        key = 'down';
-                        break;
-                    case 'ArrowLeft':
-                        key = 'left';
-                        break;
-                    case 'ArrowRight':
-                        key = 'right';
-                        break;
-                    // Add more special keys as needed
-                    case 'v':
-                        if (!isVPressed) {
-                            isVPressed = true;
-                            // Send a message to the server indicating 'V' is being held
-                            sendKeyPress('v_pressed');
-                        }
-                        break;
-                }
-            }
-
-            if (key) {
-                sendKeyPress(key);
+            if (key === 'v' && !isVPressed) {
+                isVPressed = true;
+                sendKeyPress('v_pressed', isVPressed);
+            } else if (key !== 'v') {
+                sendKeyPress(key, isVPressed);
             }
         });
 
-        // Detect key release events
         document.addEventListener('keyup', function (event) {
-            if (event.key === 'v') {
+            if (event.key === 'v' && isVPressed) {
                 isVPressed = false;
-                // Send a message to the server indicating 'V' is released
-                sendKeyPress('v_released');
+                sendKeyPress('v_released', isVPressed);
             }
         });
     </script>
